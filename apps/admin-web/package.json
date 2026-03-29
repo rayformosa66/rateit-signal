@@ -1,0 +1,14 @@
+{
+  "name": "@rateit/admin-web",
+  "version": "0.1.0",
+  "description": "RateIt admin dashboard — merchant assessments, verdict management, and report moderation",
+  "scripts": {
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@rateit/shared-types": "*"
+  },
+  "devDependencies": {
+    "typescript": "^5.4.5"
+  }
+}

@@ -3,10 +3,19 @@
   "compilerOptions": {
     "outDir": "dist",
     "rootDir": "src",
-    "composite": true
+    "composite": false,
+    "jsx": "react-jsx",
+    "lib": ["ES2020", "DOM", "DOM.Iterable"],
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "noEmit": true,
+    "paths": {
+      "@rateit/shared-types": ["../../packages/shared-types/src/index.ts"]
+    }
   },
   "include": ["src"],
   "references": [
     { "path": "../../packages/shared-types" }
   ]
 }
+

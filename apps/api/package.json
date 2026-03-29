@@ -4,6 +4,7 @@
   "description": "RateIt API — serves merchant verdicts to the extension and accepts user reports",
   "main": "dist/index.js",
   "scripts": {
+    "dev": "ts-node --transpile-only src/server.ts",
     "build": "tsc",
     "typecheck": "tsc --noEmit",
     "db:migrate": "prisma migrate dev",

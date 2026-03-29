@@ -1,0 +1,17 @@
+{
+  "name": "@rateit/api",
+  "version": "0.1.0",
+  "description": "RateIt API — serves merchant verdicts to the extension and accepts user reports",
+  "main": "dist/index.js",
+  "scripts": {
+    "build": "tsc",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@rateit/shared-types": "*",
+    "@rateit/verdict-engine": "*"
+  },
+  "devDependencies": {
+    "typescript": "^5.4.5"
+  }
+}

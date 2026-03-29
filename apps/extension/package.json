@@ -1,0 +1,14 @@
+{
+  "name": "@rateit/extension",
+  "version": "0.1.0",
+  "description": "RateIt browser extension — displays merchant trust verdict to shoppers",
+  "scripts": {
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@rateit/shared-types": "*"
+  },
+  "devDependencies": {
+    "typescript": "^5.4.5"
+  }
+}

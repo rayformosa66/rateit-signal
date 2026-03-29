@@ -1,0 +1,16 @@
+{
+  "name": "rateit-signal",
+  "private": true,
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "build": "tsc --build",
+    "clean": "tsc --build --clean"
+  },
+  "engines": {
+    "node": ">=18",
+    "npm": ">=7"
+  }
+}

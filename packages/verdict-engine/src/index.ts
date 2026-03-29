@@ -1,9 +1,3 @@
-export type {
-  Verdict,
-  PillarRating,
-  PillarSnapshot,
-} from '@rateit/shared-types';
-
 import type { Verdict, PillarRating } from '@rateit/shared-types';
 
 /** Inputs accepted by the verdict engine. */

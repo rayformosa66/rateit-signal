@@ -1,0 +1,76 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "sqlite"
+}
+
+// Verdict assigned to a merchant after assessment.
+// Maps to shared-types Verdict: 'Trusted' | 'Caution' | 'High Risk' | 'Insufficient Data'
+model Merchant {
+  id              String       @id @default(cuid())
+  name            String
+  domain          String       @unique
+  category        String
+  currentVerdict  String       // 'Trusted' | 'Caution' | 'High Risk' | 'Insufficient Data'
+  lastReviewedAt  DateTime?
+  publicSummary   String
+  status          String       @default("active") // 'active' | 'under_review' | 'suspended'
+  createdAt       DateTime     @default(now())
+  updatedAt       DateTime     @updatedAt
+
+  assessments     Assessment[]
+  userReports     UserReport[]
+}
+
+// Trust assessment completed by an internal reviewer.
+model Assessment {
+  id                   String   @id @default(cuid())
+  merchantId           String
+  transparencyRating   String   // 'Strong' | 'Mixed' | 'Weak' | 'Unknown'
+  reliabilityRating    String
+  integrityRating      String
+  communicationRating  String
+  redFlags             String   // JSON-encoded string[]
+  internalRationale    String
+  publicSummary        String
+  publicReasons        String   // JSON-encoded string[]
+  reviewedBy           String
+  reviewedAt           DateTime
+
+  merchant             Merchant @relation(fields: [merchantId], references: [id])
+
+  @@index([merchantId])
+}
+
+// Report submitted by a shopper about a merchant.
+model UserReport {
+  id                   String    @id @default(cuid())
+  merchantId           String?
+  domain               String
+  reportType           String
+  description          String
+  screenshotUrl        String?
+  status               String    @default("new") // 'new' | 'under_review' | 'resolved'
+  createdAt            DateTime  @default(now())
+
+  merchant             Merchant? @relation(fields: [merchantId], references: [id])
+
+  @@index([merchantId])
+  @@index([domain])
+}
+
+// Admin user who can review assessments and reports.
+model AdminUser {
+  id           String   @id @default(cuid())
+  email        String   @unique
+  displayName  String
+  role         String   @default("reviewer") // 'reviewer' | 'admin'
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+}

@@ -9,7 +9,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { Link, useParams, useNavigate } from 'react-router-dom';
 import type { PillarRating, MerchantStatus, Verdict } from '@rateit/shared-types';
-import { computeVerdict } from '../lib/verdictEngine';
+import { computeVerdict } from '@rateit/verdict-engine';
 import { MOCK_MERCHANTS } from '../data/merchants';
 import { MOCK_ASSESSMENTS } from '../data/assessments';
 

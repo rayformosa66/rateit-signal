@@ -1,6 +1,10 @@
-import { PrismaClient } from '@prisma/client';
+import path from 'path';
+import { PrismaLibSql } from '@prisma/adapter-libsql';
+import { PrismaClient } from '../src/generated/prisma/client';
 
-const prisma = new PrismaClient();
+const dbPath = path.resolve(__dirname, '../dev.db');
+const adapter = new PrismaLibSql({ url: `file:${dbPath}` });
+const prisma = new PrismaClient({ adapter });
 
 async function main(): Promise<void> {
   // Seed an AdminUser who performs the assessments

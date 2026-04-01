@@ -10,8 +10,7 @@
  */
 
 import http from 'http';
-import { PrismaLibSql } from '@prisma/adapter-libsql';
-import { PrismaClient } from './generated/prisma/client';
+import { PrismaClient } from '@prisma/client';
 import { computeVerdict } from '@rateit/verdict-engine';
 import type { PillarRating, MerchantLookupResponse } from '@rateit/shared-types';
 
@@ -19,8 +18,7 @@ import type { PillarRating, MerchantLookupResponse } from '@rateit/shared-types'
 // Database client
 // ---------------------------------------------------------------------------
 
-const adapter = new PrismaLibSql({ url: process.env.DATABASE_URL ?? 'file:./dev.db' });
-const prisma = new PrismaClient({ adapter });
+const prisma = new PrismaClient();
 
 // ---------------------------------------------------------------------------
 // Constants

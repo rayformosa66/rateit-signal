@@ -3,10 +3,10 @@
  *
  * Endpoints:
  *   GET  /v1/lookup?domain=<domain> — lookup merchant by domain (extension)
- *   GET  /api/merchants           — list all merchants with latest assessment
- *   GET  /api/merchants/:id       — single merchant + latest assessment
- *   POST /api/merchants           — create merchant + assessment
- *   PUT  /api/merchants/:id       — update merchant + assessment
+ *   GET  /api/merchants             — list all merchants with latest assessment
+ *   GET  /api/merchants/:id         — single merchant + latest assessment
+ *   POST /api/merchants             — create merchant + assessment
+ *   PUT  /api/merchants/:id         — update merchant + assessment
  */
 
 import http from 'http';
@@ -17,13 +17,6 @@ import { computeVerdict } from '@rateit/verdict-engine';
 import type { PillarRating, MerchantLookupResponse } from '@rateit/shared-types';
 
 // ---------------------------------------------------------------------------
-// Constants
-// ---------------------------------------------------------------------------
-
-/** Placeholder reviewer identity for Sprint 1 (no auth yet). */
-const REVIEWER_PLACEHOLDER = 'reviewer@rateit.internal';
-
-// ---------------------------------------------------------------------------
 // Database client
 // ---------------------------------------------------------------------------
 
@@ -32,10 +25,17 @@ const adapter = new PrismaLibSql({ url: `file:${dbPath}` });
 const prisma = new PrismaClient({ adapter });
 
 // ---------------------------------------------------------------------------
-// Helpers
+// Constants
 // ---------------------------------------------------------------------------
 
 const PORT = process.env.PORT ? Number(process.env.PORT) : 3001;
+
+/** Placeholder reviewer identity for Sprint 1 (no auth yet). */
+const REVIEWER_PLACEHOLDER = 'reviewer@rateit.internal';
+
+// ---------------------------------------------------------------------------
+// JSON / CORS helpers
+// ---------------------------------------------------------------------------
 
 /** Read the full request body as a string. */
 function readBody(req: http.IncomingMessage): Promise<string> {
@@ -60,7 +60,7 @@ function json(res: http.ServerResponse, statusCode: number, body: unknown): void
   res.end(payload);
 }
 
-/** Attach CORS pre-flight headers and end the response. */
+/** Handle CORS pre-flight request. */
 function preflight(res: http.ServerResponse): void {
   res.writeHead(204, {
     'Access-Control-Allow-Origin': '*',
@@ -111,6 +111,7 @@ async function lookupByDomain(
       topReasons = [];
     }
   }
+
   const response: MerchantLookupResponse = {
     domain: merchant.domain,
     name: merchant.name,
@@ -142,7 +143,7 @@ async function listMerchants(res: http.ServerResponse): Promise<void> {
   });
 
   const result = merchants.map((m) => {
-    const assessment = m.assessments[0] ?? null;
+    const a = m.assessments[0] ?? null;
     return {
       id: m.id,
       name: m.name,
@@ -152,18 +153,18 @@ async function listMerchants(res: http.ServerResponse): Promise<void> {
       lastReviewedAt: m.lastReviewedAt?.toISOString() ?? null,
       publicSummary: m.publicSummary,
       status: m.status,
-      assessment: assessment
+      assessment: a
         ? {
-            id: assessment.id,
-            transparencyRating: assessment.transparencyRating,
-            reliabilityRating: assessment.reliabilityRating,
-            integrityRating: assessment.integrityRating,
-            communicationRating: assessment.communicationRating,
-            redFlags: JSON.parse(assessment.redFlags) as string[],
-            internalRationale: assessment.internalRationale,
-            publicSummary: assessment.publicSummary,
-            publicReasons: JSON.parse(assessment.publicReasons) as string[],
-            reviewedAt: assessment.reviewedAt.toISOString(),
+            id: a.id,
+            transparencyRating: a.transparencyRating,
+            reliabilityRating: a.reliabilityRating,
+            integrityRating: a.integrityRating,
+            communicationRating: a.communicationRating,
+            redFlags: JSON.parse(a.redFlags) as string[],
+            internalRationale: a.internalRationale,
+            publicSummary: a.publicSummary,
+            publicReasons: JSON.parse(a.publicReasons) as string[],
+            reviewedAt: a.reviewedAt.toISOString(),
           }
         : null,
     };
@@ -173,10 +174,7 @@ async function listMerchants(res: http.ServerResponse): Promise<void> {
 }
 
 /** GET /api/merchants/:id */
-async function getMerchant(
-  res: http.ServerResponse,
-  id: string,
-): Promise<void> {
+async function getMerchant(res: http.ServerResponse, id: string): Promise<void> {
   const merchant = await prisma.merchant.findUnique({
     where: { id },
     include: {
@@ -192,7 +190,7 @@ async function getMerchant(
     return;
   }
 
-  const assessment = merchant.assessments[0] ?? null;
+  const a = merchant.assessments[0] ?? null;
   json(res, 200, {
     id: merchant.id,
     name: merchant.name,
@@ -202,18 +200,18 @@ async function getMerchant(
     lastReviewedAt: merchant.lastReviewedAt?.toISOString() ?? null,
     publicSummary: merchant.publicSummary,
     status: merchant.status,
-    assessment: assessment
+    assessment: a
       ? {
-          id: assessment.id,
-          transparencyRating: assessment.transparencyRating,
-          reliabilityRating: assessment.reliabilityRating,
-          integrityRating: assessment.integrityRating,
-          communicationRating: assessment.communicationRating,
-          redFlags: JSON.parse(assessment.redFlags) as string[],
-          internalRationale: assessment.internalRationale,
-          publicSummary: assessment.publicSummary,
-          publicReasons: JSON.parse(assessment.publicReasons) as string[],
-          reviewedAt: assessment.reviewedAt.toISOString(),
+          id: a.id,
+          transparencyRating: a.transparencyRating,
+          reliabilityRating: a.reliabilityRating,
+          integrityRating: a.integrityRating,
+          communicationRating: a.communicationRating,
+          redFlags: JSON.parse(a.redFlags) as string[],
+          internalRationale: a.internalRationale,
+          publicSummary: a.publicSummary,
+          publicReasons: JSON.parse(a.publicReasons) as string[],
+          reviewedAt: a.reviewedAt.toISOString(),
         }
       : null,
   });
@@ -256,7 +254,6 @@ async function createMerchant(
     return;
   }
 
-  // Compute verdict from assessment if provided
   const verdict = assessment
     ? computeVerdict({
         transparencyRating: assessment.transparencyRating,
@@ -281,7 +278,6 @@ async function createMerchant(
 
   let savedAssessment = null;
   if (assessment) {
-    const reviewedBy = REVIEWER_PLACEHOLDER;
     savedAssessment = await prisma.assessment.create({
       data: {
         merchantId: merchant.id,
@@ -293,7 +289,7 @@ async function createMerchant(
         internalRationale: assessment.internalRationale,
         publicSummary: assessment.publicSummary,
         publicReasons: JSON.stringify(assessment.publicReasons),
-        reviewedBy,
+        reviewedBy: REVIEWER_PLACEHOLDER,
         reviewedAt: lastReviewedAt ? new Date(lastReviewedAt) : new Date(),
       },
     });
@@ -395,7 +391,6 @@ async function updateMerchant(
 
   let savedAssessment = null;
   if (assessment) {
-    const reviewedBy = REVIEWER_PLACEHOLDER;
     savedAssessment = await prisma.assessment.create({
       data: {
         merchantId: merchant.id,
@@ -407,7 +402,7 @@ async function updateMerchant(
         internalRationale: assessment.internalRationale,
         publicSummary: assessment.publicSummary,
         publicReasons: JSON.stringify(assessment.publicReasons),
-        reviewedBy,
+        reviewedBy: REVIEWER_PLACEHOLDER,
         reviewedAt: lastReviewedAt ? new Date(lastReviewedAt) : new Date(),
       },
     });
@@ -452,7 +447,6 @@ const server = http.createServer(async (req, res) => {
   const url = req.url ?? '/';
   const method = req.method?.toUpperCase() ?? 'GET';
 
-  // Pre-flight CORS
   if (method === 'OPTIONS') {
     preflight(res);
     return;

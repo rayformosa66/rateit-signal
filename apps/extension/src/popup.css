@@ -149,3 +149,25 @@ body {
   color: #888;
   text-align: right;
 }
+
+/* ── Status messages (loading / error) ───────────────────── */
+.status-message {
+  padding: 20px 0;
+  text-align: center;
+  font-size: 13px;
+}
+
+.loading-message {
+  color: #888;
+}
+
+.error-message {
+  color: #991b1b;
+}
+
+/* ── Not-found prompt ────────────────────────────────────── */
+.not-found-prompt {
+  font-size: 12px;
+  color: #555;
+  line-height: 1.5;
+}

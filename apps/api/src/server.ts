@@ -1,7 +1,8 @@
 /**
- * RateIt Admin API — merchant assessment CRUD.
+ * RateIt Admin API — merchant assessment CRUD + domain lookup.
  *
  * Endpoints:
+ *   GET  /v1/lookup?domain=<domain> — lookup merchant by domain (extension)
  *   GET  /api/merchants           — list all merchants with latest assessment
  *   GET  /api/merchants/:id       — single merchant + latest assessment
  *   POST /api/merchants           — create merchant + assessment
@@ -13,7 +14,7 @@ import path from 'path';
 import { PrismaLibSql } from '@prisma/adapter-libsql';
 import { PrismaClient } from './generated/prisma/client';
 import { computeVerdict } from '@rateit/verdict-engine';
-import type { PillarRating } from '@rateit/shared-types';
+import type { PillarRating, MerchantLookupResponse } from '@rateit/shared-types';
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -72,6 +73,61 @@ function preflight(res: http.ServerResponse): void {
 // ---------------------------------------------------------------------------
 // Route handlers
 // ---------------------------------------------------------------------------
+
+/** GET /v1/lookup?domain=<domain> */
+async function lookupByDomain(
+  req: http.IncomingMessage,
+  res: http.ServerResponse,
+): Promise<void> {
+  const parsedUrl = new URL(req.url!, 'http://localhost');
+  const domain = parsedUrl.searchParams.get('domain')?.toLowerCase().trim();
+
+  if (!domain) {
+    json(res, 400, { error: 'domain query parameter is required' });
+    return;
+  }
+
+  const merchant = await prisma.merchant.findFirst({
+    where: { domain },
+    include: {
+      assessments: {
+        orderBy: { reviewedAt: 'desc' },
+        take: 1,
+      },
+    },
+  });
+
+  if (!merchant) {
+    json(res, 404, { error: 'Not found' });
+    return;
+  }
+
+  const assessment = merchant.assessments[0] ?? null;
+  let topReasons: string[] = [];
+  if (assessment) {
+    try {
+      topReasons = JSON.parse(assessment.publicReasons) as string[];
+    } catch {
+      topReasons = [];
+    }
+  }
+  const response: MerchantLookupResponse = {
+    domain: merchant.domain,
+    name: merchant.name,
+    verdict: merchant.currentVerdict as MerchantLookupResponse['verdict'],
+    lastReviewedAt: merchant.lastReviewedAt?.toISOString() ?? null,
+    pillarSnapshot: {
+      transparency: (assessment?.transparencyRating ?? 'Unknown') as PillarRating,
+      reliability: (assessment?.reliabilityRating ?? 'Unknown') as PillarRating,
+      integrity: (assessment?.integrityRating ?? 'Unknown') as PillarRating,
+      communication: (assessment?.communicationRating ?? 'Unknown') as PillarRating,
+    },
+    publicSummary: merchant.publicSummary,
+    topReasons,
+  };
+
+  json(res, 200, response);
+}
 
 /** GET /api/merchants */
 async function listMerchants(res: http.ServerResponse): Promise<void> {
@@ -403,6 +459,12 @@ const server = http.createServer(async (req, res) => {
   }
 
   try {
+    // GET /v1/lookup?domain=...
+    if (method === 'GET' && url.startsWith('/v1/lookup')) {
+      await lookupByDomain(req, res);
+      return;
+    }
+
     // GET /api/merchants
     if (method === 'GET' && url === '/api/merchants') {
       await listMerchants(res);

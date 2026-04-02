@@ -6,6 +6,7 @@
  *   GET  /api/merchants/:id       — single merchant + latest assessment
  *   POST /api/merchants           — create merchant + assessment
  *   PUT  /api/merchants/:id       — update merchant + assessment
+ *   GET  /v1/lookup?domain=...    — public domain lookup (MerchantLookupResponse)
  */
 
 import http from 'http';
@@ -13,7 +14,7 @@ import path from 'path';
 import { PrismaLibSql } from '@prisma/adapter-libsql';
 import { PrismaClient } from './generated/prisma/client';
 import { computeVerdict } from '@rateit/verdict-engine';
-import type { PillarRating } from '@rateit/shared-types';
+import type { MerchantLookupResponse, PillarRating } from '@rateit/shared-types';
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -388,6 +389,55 @@ async function updateMerchant(
   });
 }
 
+/** GET /v1/lookup?domain=... */
+async function lookupMerchant(
+  req: http.IncomingMessage,
+  res: http.ServerResponse,
+): Promise<void> {
+  const rawUrl = req.url ?? '/';
+  const parsedUrl = new URL(rawUrl, 'http://localhost');
+  const domain = parsedUrl.searchParams.get('domain');
+
+  if (!domain) {
+    json(res, 400, { error: 'domain query parameter is required' });
+    return;
+  }
+
+  const merchant = await prisma.merchant.findUnique({
+    where: { domain },
+    include: {
+      assessments: {
+        orderBy: { reviewedAt: 'desc' },
+        take: 1,
+      },
+    },
+  });
+
+  if (!merchant) {
+    json(res, 404, { error: 'Merchant not found' });
+    return;
+  }
+
+  const assessment = merchant.assessments[0] ?? null;
+
+  const response: MerchantLookupResponse = {
+    domain: merchant.domain,
+    name: merchant.name,
+    verdict: merchant.currentVerdict as MerchantLookupResponse['verdict'],
+    lastReviewedAt: merchant.lastReviewedAt?.toISOString() ?? null,
+    pillarSnapshot: {
+      transparency: (assessment?.transparencyRating ?? 'Unknown') as PillarRating,
+      reliability: (assessment?.reliabilityRating ?? 'Unknown') as PillarRating,
+      integrity: (assessment?.integrityRating ?? 'Unknown') as PillarRating,
+      communication: (assessment?.communicationRating ?? 'Unknown') as PillarRating,
+    },
+    publicSummary: merchant.publicSummary,
+    topReasons: assessment ? (JSON.parse(assessment.publicReasons) as string[]) : [],
+  };
+
+  json(res, 200, response);
+}
+
 // ---------------------------------------------------------------------------
 // Request router
 // ---------------------------------------------------------------------------
@@ -426,6 +476,12 @@ const server = http.createServer(async (req, res) => {
     const putMatch = url.match(/^\/api\/merchants\/([^/?]+)$/);
     if (method === 'PUT' && putMatch) {
       await updateMerchant(req, res, putMatch[1]);
+      return;
+    }
+
+    // GET /v1/lookup?domain=...
+    if (method === 'GET' && url.startsWith('/v1/lookup')) {
+      await lookupMerchant(req, res);
       return;
     }
 

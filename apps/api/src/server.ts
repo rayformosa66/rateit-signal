@@ -414,7 +414,21 @@ async function lookupMerchant(
   });
 
   if (!merchant) {
-    json(res, 404, { error: 'Merchant not found' });
+    const insufficientResponse: MerchantLookupResponse = {
+      domain,
+      name: null,
+      verdict: 'Insufficient Data',
+      lastReviewedAt: null,
+      pillarSnapshot: {
+        transparency: 'Unknown',
+        reliability: 'Unknown',
+        integrity: 'Unknown',
+        communication: 'Unknown',
+      },
+      publicSummary: 'We do not yet have enough verified information to rate this merchant.',
+      topReasons: ['Not enough verified information yet.'],
+    };
+    json(res, 200, insufficientResponse);
     return;
   }
 

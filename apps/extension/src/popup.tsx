@@ -1,6 +1,4 @@
-from pathlib import Path
-
-code = """import ReactDOM from 'react-dom/client';
+import ReactDOM from 'react-dom/client';
 import { useEffect, useState } from 'react';
 import type { Verdict, MerchantLookupResponse } from '@rateit/shared-types';
 import './popup.css';
@@ -17,7 +15,7 @@ const VERDICT_CONFIG: Record<Verdict, { label: string; className: string; icon: 
 function buildInsufficient(domain: string): MerchantLookupResponse {
   return {
     domain,
-    name: 'Unknown merchant',
+    name: null,
     verdict: 'Insufficient Data',
     lastReviewedAt: null,
     pillarSnapshot: {
@@ -26,8 +24,8 @@ function buildInsufficient(domain: string): MerchantLookupResponse {
       integrity: 'Unknown',
       communication: 'Unknown',
     },
-    publicSummary: 'No rating is available for this site yet.',
-    topReasons: [],
+    publicSummary: 'We do not yet have enough verified information to rate this merchant.',
+    topReasons: ['Not enough verified information yet.'],
   };
 }
 
@@ -47,7 +45,7 @@ function VerdictPanel({ data }: { data: MerchantLookupResponse }) {
         </span>
         <div>
           <div className="verdict-label">{config.label}</div>
-          <div className="verdict-name">{data.name}</div>
+          {data.name && <div className="verdict-name">{data.name}</div>}
         </div>
       </div>
 
@@ -105,9 +103,8 @@ async function getActiveTabDomain(): Promise<string | null> {
   });
 }
 
-async function lookupDomain(domain: string): Promise<MerchantLookupResponse | null> {
+async function lookupDomain(domain: string): Promise<MerchantLookupResponse> {
   const res = await fetch(`${API_BASE}/v1/lookup?domain=${encodeURIComponent(domain)}`);
-  if (res.status === 404) return null;
   if (!res.ok) throw new Error(`API error (${res.status})`);
   return (await res.json()) as MerchantLookupResponse;
 }
@@ -115,7 +112,6 @@ async function lookupDomain(domain: string): Promise<MerchantLookupResponse | nu
 type ScreenState =
   | { kind: 'loading' }
   | { kind: 'success'; data: MerchantLookupResponse }
-  | { kind: 'notfound'; domain: string }
   | { kind: 'error'; message: string };
 
 function App() {
@@ -132,19 +128,14 @@ function App() {
         if (cancelled) return;
 
         if (!domain) {
-          setState({ kind: 'notfound', domain: 'unknown-site' });
+          setState({ kind: 'success', data: buildInsufficient('unknown-site') });
           return;
         }
 
-        const found = await lookupDomain(domain.toLowerCase());
+        const data = await lookupDomain(domain.toLowerCase());
         if (cancelled) return;
 
-        if (!found) {
-          setState({ kind: 'notfound', domain });
-          return;
-        }
-
-        setState({ kind: 'success', data: found });
+        setState({ kind: 'success', data });
       } catch (e) {
         if (cancelled) return;
         const msg = e instanceof Error ? e.message : 'Unknown error';
@@ -183,8 +174,6 @@ function App() {
         </div>
       )}
 
-      {state.kind === 'notfound' && <VerdictPanel data={buildInsufficient(state.domain)} />}
-
       {state.kind === 'success' && <VerdictPanel data={state.data} />}
     </div>
   );
@@ -192,8 +181,3 @@ function App() {
 
 const rootEl = document.getElementById('root')!;
 ReactDOM.createRoot(rootEl).render(<App />);
-"""
-
-path = Path("/mnt/data/popup.tsx")
-path.write_text(code, encoding="utf-8")
-print("Wrote:", path, "bytes:", path.stat().st_size)

@@ -1,6 +1,4 @@
-from pathlib import Path
-
-code = """import ReactDOM from 'react-dom/client';
+import ReactDOM from 'react-dom/client';
 import { useEffect, useState } from 'react';
 import type { Verdict, MerchantLookupResponse } from '@rateit/shared-types';
 import './popup.css';
@@ -192,8 +190,3 @@ function App() {
 
 const rootEl = document.getElementById('root')!;
 ReactDOM.createRoot(rootEl).render(<App />);
-"""
-
-path = Path("/mnt/data/popup.tsx")
-path.write_text(code, encoding="utf-8")
-print("Wrote:", path, "bytes:", path.stat().st_size)

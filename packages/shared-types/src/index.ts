@@ -66,7 +66,7 @@ export interface PillarSnapshot {
 /** Response shape returned by the merchant-by-domain API endpoint. */
 export interface MerchantLookupResponse {
   domain: string;
-  name: string;
+  name: string | null;
   verdict: Verdict;
   lastReviewedAt: string | null;
   pillarSnapshot: PillarSnapshot;

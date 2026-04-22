@@ -10,8 +10,6 @@ import { useState, useEffect, useCallback } from 'react';
 import { Link, useParams, useNavigate } from 'react-router-dom';
 import type { PillarRating, MerchantStatus, Verdict } from '@rateit/shared-types';
 import { computeVerdict } from '@rateit/verdict-engine';
-import { MOCK_MERCHANTS } from '../data/merchants';
-import { MOCK_ASSESSMENTS } from '../data/assessments';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -334,7 +332,6 @@ function MerchantAssessmentPage() {
   const loadMerchant = useCallback(async () => {
     if (isNew || !id) return;
 
-    // 1. Try real API
     const data = await fetchMerchant(id);
     if (data) {
       setForm({
@@ -355,29 +352,6 @@ function MerchantAssessmentPage() {
         internalRationale: data.assessment?.internalRationale ?? '',
         publicSummary: data.assessment?.publicSummary ?? data.publicSummary,
         publicReasons: padToThree(data.assessment?.publicReasons ?? []),
-      });
-      setLoading(false);
-      return;
-    }
-
-    // 2. Fall back to mock data
-    const mockMerchant = MOCK_MERCHANTS.find((m) => m.id === id);
-    const mockAssessment = MOCK_ASSESSMENTS.find((a) => a.merchantId === id);
-    if (mockMerchant) {
-      setForm({
-        name: mockMerchant.name,
-        domain: mockMerchant.domain,
-        category: mockMerchant.category,
-        status: mockMerchant.status,
-        lastReviewedAt: mockMerchant.lastReviewedAt.substring(0, 10),
-        transparencyRating: mockAssessment?.transparencyRating ?? 'Unknown',
-        reliabilityRating: mockAssessment?.reliabilityRating ?? 'Unknown',
-        integrityRating: mockAssessment?.integrityRating ?? 'Unknown',
-        communicationRating: mockAssessment?.communicationRating ?? 'Unknown',
-        redFlags: mockAssessment?.redFlags.length ? mockAssessment.redFlags : [''],
-        internalRationale: mockAssessment?.internalRationale ?? '',
-        publicSummary: mockAssessment?.publicSummary ?? mockMerchant.publicSummary,
-        publicReasons: padToThree(mockAssessment?.publicReasons ?? []),
       });
     }
     setLoading(false);

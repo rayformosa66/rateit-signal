@@ -13,7 +13,7 @@
     "test": "vitest run"
   },
   "dependencies": {
-    "@rateit/shared-types": "*"
+    "@rateit/shared-types": "workspace:*"
   },
   "devDependencies": {
     "typescript": "^5.4.5",

@@ -18,12 +18,13 @@
     "@libsql/client": "^0.17.2",
     "@prisma/adapter-libsql": "^7.6.0",
     "@prisma/client": "^7.6.0",
-    "@rateit/shared-types": "*",
-    "@rateit/verdict-engine": "*",
+    "@rateit/shared-types": "workspace:*",
+    "@rateit/verdict-engine": "workspace:*",
     "dotenv": "^16.6.1",
     "prisma": "^7.6.0"
   },
   "devDependencies": {
+    "@types/node": "^25.6.0",
     "ts-node": "^10.9.2",
     "typescript": "^5.4.5"
   }

@@ -10,8 +10,8 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@rateit/shared-types": "*",
-    "@rateit/verdict-engine": "*",
+   "@rateit/shared-types": "workspace:*",
+    "@rateit/verdict-engine": "workspace:*",
     "react": "^19.2.4",
     "react-dom": "^19.2.4",
     "react-router-dom": "^7.13.2"

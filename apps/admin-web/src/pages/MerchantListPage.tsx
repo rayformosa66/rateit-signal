@@ -1,9 +1,18 @@
+import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { MOCK_MERCHANTS } from '../data/merchants';
 import type { Merchant } from '@rateit/shared-types';
 
 type Verdict = Merchant['currentVerdict'];
 type Status = Merchant['status'];
+
+interface MerchantRow {
+  id: string;
+  name: string;
+  domain: string;
+  currentVerdict: Verdict;
+  lastReviewedAt: string | null;
+  status: Status;
+}
 
 function verdictBadge(verdict: Verdict) {
   const map: Record<Verdict, string> = {
@@ -29,7 +38,8 @@ function statusBadge(status: Status) {
   return <span className={map[status]}>{label[status]}</span>;
 }
 
-function formatDate(iso: string) {
+function formatDate(iso: string | null) {
+  if (!iso) return '—';
   return new Date(iso).toLocaleDateString('en-AU', {
     day: '2-digit',
     month: 'short',
@@ -38,6 +48,26 @@ function formatDate(iso: string) {
 }
 
 function MerchantListPage() {
+  const [merchants, setMerchants] = useState<MerchantRow[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    fetch('/api/merchants')
+      .then((res) => {
+        if (!res.ok) throw new Error(`API error ${res.status}`);
+        return res.json() as Promise<MerchantRow[]>;
+      })
+      .then((data) => {
+        setMerchants(data);
+        setLoading(false);
+      })
+      .catch(() => {
+        setError('Could not load merchants. Ensure the API is running on port 3001.');
+        setLoading(false);
+      });
+  }, []);
+
   return (
     <>
       <div className="page-header">
@@ -47,32 +77,49 @@ function MerchantListPage() {
         </Link>
       </div>
 
-      <div className="table-wrapper">
-        <table>
-          <thead>
-            <tr>
-              <th>Name</th>
-              <th>Domain</th>
-              <th>Verdict</th>
-              <th>Last Reviewed</th>
-              <th>Status</th>
-            </tr>
-          </thead>
-          <tbody>
-            {MOCK_MERCHANTS.map((merchant) => (
-              <tr key={merchant.id}>
-                <td>
-                  <Link to={`/merchants/${merchant.id}`}>{merchant.name}</Link>
-                </td>
-                <td>{merchant.domain}</td>
-                <td>{verdictBadge(merchant.currentVerdict)}</td>
-                <td>{formatDate(merchant.lastReviewedAt)}</td>
-                <td>{statusBadge(merchant.status)}</td>
+      {loading && <p style={{ color: '#666', marginTop: 8 }}>Loading…</p>}
+
+      {error && (
+        <div className="save-error" role="alert" style={{ marginTop: 12 }}>
+          {error}
+        </div>
+      )}
+
+      {!loading && !error && (
+        <div className="table-wrapper">
+          <table>
+            <thead>
+              <tr>
+                <th>Name</th>
+                <th>Domain</th>
+                <th>Verdict</th>
+                <th>Last Reviewed</th>
+                <th>Status</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
+            </thead>
+            <tbody>
+              {merchants.length === 0 && (
+                <tr>
+                  <td colSpan={5} style={{ textAlign: 'center', color: '#888' }}>
+                    No merchants yet. <Link to="/merchants/new">Create one.</Link>
+                  </td>
+                </tr>
+              )}
+              {merchants.map((merchant) => (
+                <tr key={merchant.id}>
+                  <td>
+                    <Link to={`/merchants/${merchant.id}`}>{merchant.name}</Link>
+                  </td>
+                  <td>{merchant.domain}</td>
+                  <td>{verdictBadge(merchant.currentVerdict)}</td>
+                  <td>{formatDate(merchant.lastReviewedAt)}</td>
+                  <td>{statusBadge(merchant.status)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
     </>
   );
 }

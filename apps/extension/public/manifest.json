@@ -3,6 +3,15 @@
   "name": "RateIt Signal",
   "version": "0.1.0",
   "description": "See merchant trust ratings before you buy",
+  "permissions": ["activeTab"],
+  "host_permissions": [
+    "http://localhost:3001/*",
+    "https://api.rateit.com.au/*"
+  ],
+  "background": {
+    "service_worker": "background.js",
+    "type": "module"
+  },
   "action": {
     "default_popup": "popup.html",
     "default_title": "RateIt Signal"

@@ -2,11 +2,12 @@
  * RateIt Admin API — merchant assessment CRUD.
  *
  * Endpoints:
- *   GET  /api/merchants           — list all merchants with latest assessment
- *   GET  /api/merchants/:id       — single merchant + latest assessment
- *   POST /api/merchants           — create merchant + assessment
- *   PUT  /api/merchants/:id       — update merchant + assessment
- *   GET  /v1/lookup?domain=...    — public domain lookup (MerchantLookupResponse)
+ *   GET  /api/merchants                      — list all merchants with latest assessment
+ *   GET  /api/merchants/by-domain/:domain    — extension lookup by domain
+ *   GET  /api/merchants/:id                  — single merchant + latest assessment
+ *   POST /api/merchants                      — create merchant + assessment
+ *   PUT  /api/merchants/:id                  — update merchant + assessment
+ *   GET  /v1/lookup?domain=...               — public domain lookup (MerchantLookupResponse)
  */
 
 import http from 'http';
@@ -115,6 +116,47 @@ async function listMerchants(res: http.ServerResponse): Promise<void> {
   });
 
   json(res, 200, result);
+}
+
+/** GET /api/merchants/by-domain/:domain */
+async function getMerchantByDomain(
+  res: http.ServerResponse,
+  domain: string,
+): Promise<void> {
+  const merchant = await prisma.merchant.findFirst({
+    where: { domain: { equals: domain.toLowerCase() } },
+    include: {
+      assessments: {
+        orderBy: { reviewedAt: 'desc' },
+        take: 1,
+      },
+    },
+  });
+
+  if (!merchant) {
+    json(res, 404, { error: 'Merchant not found' });
+    return;
+  }
+
+  const assessment = merchant.assessments[0] ?? null;
+  const response = {
+    domain: merchant.domain,
+    name: merchant.name,
+    verdict: merchant.currentVerdict,
+    lastReviewedAt: merchant.lastReviewedAt?.toISOString() ?? null,
+    pillarSnapshot: assessment
+      ? {
+          transparency: assessment.transparencyRating,
+          reliability: assessment.reliabilityRating,
+          integrity: assessment.integrityRating,
+          communication: assessment.communicationRating,
+        }
+      : { transparency: 'Unknown', reliability: 'Unknown', integrity: 'Unknown', communication: 'Unknown' },
+    publicSummary: merchant.publicSummary ?? '',
+    topReasons: assessment ? (JSON.parse(assessment.publicReasons) as string[]).slice(0, 3) : [],
+  };
+
+  json(res, 200, response);
 }
 
 /** GET /api/merchants/:id */
@@ -456,6 +498,13 @@ const server = http.createServer(async (req, res) => {
     // GET /api/merchants
     if (method === 'GET' && url === '/api/merchants') {
       await listMerchants(res);
+      return;
+    }
+
+    // GET /api/merchants/by-domain/:domain
+    const domainMatch = url.match(/^\/api\/merchants\/by-domain\/([^/?]+)$/);
+    if (method === 'GET' && domainMatch) {
+      await getMerchantByDomain(res, decodeURIComponent(domainMatch[1]));
       return;
     }
 

@@ -1,9 +1,12 @@
 import { Outlet, NavLink, useNavigate } from 'react-router-dom';
+import { clearToken, getEmailFromToken } from '../lib/auth';
 
 function AdminShell() {
   const navigate = useNavigate();
+  const email = getEmailFromToken() ?? 'Admin';
 
   function handleLogout() {
+    clearToken();
     navigate('/login');
   }
 
@@ -18,6 +21,14 @@ function AdminShell() {
               className={({ isActive }) => (isActive ? 'active' : undefined)}
             >
               Merchants
+            </NavLink>
+          </li>
+          <li>
+            <NavLink
+              to="/reports"
+              className={({ isActive }) => (isActive ? 'active' : undefined)}
+            >
+              Reports
             </NavLink>
           </li>
         </ul>
@@ -35,7 +46,7 @@ function AdminShell() {
       <div className="main-area">
         <header className="topbar">
           <span className="topbar-title">RateIt Signal</span>
-          <span className="topbar-user">reviewer@rateit.internal</span>
+          <span className="topbar-user">{email}</span>
         </header>
 
         <main className="page-content">

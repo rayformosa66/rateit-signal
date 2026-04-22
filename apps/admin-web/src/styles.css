@@ -600,6 +600,79 @@ tbody td a:hover {
   text-decoration: underline;
 }
 
+/* ── Status message ─────────────────────────────────────── */
+.status-message {
+  font-size: 13px;
+  color: #666;
+  text-align: center;
+  padding: 12px 0;
+}
+
+/* ── Filter tabs ────────────────────────────────────────── */
+.filter-tabs {
+  display: flex;
+  gap: 6px;
+}
+
+.filter-tab {
+  padding: 6px 14px;
+  border-radius: 20px;
+  border: 1px solid #d1d5db;
+  background: #fff;
+  font-size: 12px;
+  font-weight: 600;
+  color: #555;
+  cursor: pointer;
+  transition: background 0.1s, color 0.1s;
+}
+
+.filter-tab:hover {
+  background: #f0f2f5;
+}
+
+.filter-tab-active {
+  background: #1a1a2e;
+  color: #fff;
+  border-color: #1a1a2e;
+}
+
+/* ── Report action buttons ──────────────────────────────── */
+.report-actions {
+  display: flex;
+  gap: 6px;
+}
+
+.btn-action {
+  padding: 4px 10px;
+  border-radius: 4px;
+  border: 1px solid #d1d5db;
+  background: #fff;
+  font-size: 11px;
+  font-weight: 600;
+  color: #444;
+  cursor: pointer;
+  transition: background 0.1s;
+}
+
+.btn-action:hover:not(:disabled) {
+  background: #f0f2f5;
+}
+
+.btn-action:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.btn-action-resolve {
+  color: #065f46;
+  border-color: #a7f3d0;
+  background: #d1fae5;
+}
+
+.btn-action-resolve:hover:not(:disabled) {
+  background: #a7f3d0;
+}
+
 /* ── Save error ─────────────────────────────────────────── */
 .save-error {
   background: #fee2e2;

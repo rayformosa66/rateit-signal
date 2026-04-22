@@ -1,4 +1,5 @@
 import path from 'path';
+import bcrypt from 'bcryptjs';
 import { PrismaLibSql } from '@prisma/adapter-libsql';
 import { PrismaClient } from '../src/generated/prisma/client';
 
@@ -8,12 +9,14 @@ const prisma = new PrismaClient({ adapter });
 
 async function main(): Promise<void> {
   // Seed an AdminUser who performs the assessments
+  const passwordHash = await bcrypt.hash('rateit-admin', 10);
   const reviewer = await prisma.adminUser.upsert({
     where: { email: 'reviewer@rateit.internal' },
-    update: {},
+    update: { passwordHash },
     create: {
       email: 'reviewer@rateit.internal',
       displayName: 'RateIt Reviewer',
+      passwordHash,
       role: 'reviewer',
     },
   });

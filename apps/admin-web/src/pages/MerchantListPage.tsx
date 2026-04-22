@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import type { Merchant } from '@rateit/shared-types';
+import { authHeaders } from '../lib/auth';
 
 type Verdict = Merchant['currentVerdict'];
 type Status = Merchant['status'];
@@ -53,7 +54,7 @@ function MerchantListPage() {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    fetch('/api/merchants')
+    fetch('/api/merchants', { headers: authHeaders() })
       .then((res) => {
         if (!res.ok) throw new Error(`API error ${res.status}`);
         return res.json() as Promise<MerchantRow[]>;

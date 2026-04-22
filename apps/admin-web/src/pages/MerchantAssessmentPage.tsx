@@ -10,6 +10,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { Link, useParams, useNavigate } from 'react-router-dom';
 import type { PillarRating, MerchantStatus, Verdict } from '@rateit/shared-types';
 import { computeVerdict } from '@rateit/verdict-engine';
+import { authHeaders } from '../lib/auth';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -277,7 +278,7 @@ interface MerchantApiResponse {
 
 async function fetchMerchant(id: string): Promise<MerchantApiResponse | null> {
   try {
-    const res = await fetch(`/api/merchants/${id}`);
+    const res = await fetch(`/api/merchants/${id}`, { headers: authHeaders() });
     if (!res.ok) return null;
     return (await res.json()) as MerchantApiResponse;
   } catch {
@@ -294,7 +295,7 @@ async function saveMerchant(
     const method = id ? 'PUT' : 'POST';
     const res = await fetch(url, {
       method,
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', ...authHeaders() },
       body: JSON.stringify(payload),
     });
     if (!res.ok) return null;

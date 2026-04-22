@@ -24,6 +24,7 @@ import { PrismaClient } from './generated/prisma/client';
 import { computeVerdict } from '@rateit/verdict-engine';
 import { signToken, getAuthUser } from './auth';
 import type { MerchantLookupResponse, PillarRating } from '@rateit/shared-types';
+import { METHODOLOGY_VERSION } from '@rateit/shared-types';
 
 // ---------------------------------------------------------------------------
 // Database client
@@ -168,6 +169,13 @@ async function getMerchantByDomain(res: http.ServerResponse, domain: string): Pr
     },
     publicSummary: merchant.publicSummary ?? '',
     topReasons: assessment ? (JSON.parse(assessment.publicReasons) as string[]).slice(0, 3) : [],
+    auditTrail: {
+      reviewedAt: assessment?.reviewedAt.toISOString() ?? null,
+      reviewerRole: assessment?.reviewerRole ?? null,
+      triggerReason: assessment?.triggerReason ?? null,
+    },
+    methodologyVersion: METHODOLOGY_VERSION,
+    flaggedForReview: assessment?.flaggedForReview ?? false,
   };
   json(res, 200, response);
 }
@@ -199,7 +207,7 @@ async function getMerchant(res: http.ServerResponse, id: string): Promise<void> 
 }
 
 /** POST /api/merchants */
-async function createMerchant(req: http.IncomingMessage, res: http.ServerResponse): Promise<void> {
+async function createMerchant(req: http.IncomingMessage, res: http.ServerResponse, reviewerRole: string): Promise<void> {
   const raw = await readBody(req);
   let body: Record<string, unknown>;
   try {
@@ -223,7 +231,10 @@ async function createMerchant(req: http.IncomingMessage, res: http.ServerRespons
     return;
   }
 
-  const verdict = assessment ? computeVerdict(assessment) : 'Insufficient Data';
+  const hasConflict = assessment?.hasConflict ?? false;
+  const verdict = assessment
+    ? computeVerdict({ ...assessment, hasConflict })
+    : 'Insufficient Data';
 
   const merchant = await prisma.merchant.create({
     data: {
@@ -252,6 +263,10 @@ async function createMerchant(req: http.IncomingMessage, res: http.ServerRespons
         publicReasons: JSON.stringify(assessment.publicReasons),
         reviewedBy: REVIEWER_PLACEHOLDER,
         reviewedAt: lastReviewedAt ? new Date(lastReviewedAt) : new Date(),
+        reviewerRole,
+        triggerReason: assessment.triggerReason ?? 'Proactive review',
+        hasConflict,
+        flaggedForReview: hasConflict,
       },
     });
   }
@@ -274,6 +289,7 @@ async function updateMerchant(
   req: http.IncomingMessage,
   res: http.ServerResponse,
   id: string,
+  reviewerRole: string,
 ): Promise<void> {
   const existing = await prisma.merchant.findUnique({ where: { id } });
   if (!existing) { json(res, 404, { error: 'Merchant not found' }); return; }
@@ -299,7 +315,10 @@ async function updateMerchant(
     json(res, 422, { error: 'name, domain, and category are required' }); return;
   }
 
-  const verdict = assessment ? computeVerdict(assessment) : existing.currentVerdict;
+  const hasConflict = assessment?.hasConflict ?? false;
+  const verdict = assessment
+    ? computeVerdict({ ...assessment, hasConflict })
+    : existing.currentVerdict;
 
   const merchant = await prisma.merchant.update({
     where: { id },
@@ -328,6 +347,10 @@ async function updateMerchant(
         publicReasons: JSON.stringify(assessment.publicReasons),
         reviewedBy: REVIEWER_PLACEHOLDER,
         reviewedAt: lastReviewedAt ? new Date(lastReviewedAt) : new Date(),
+        reviewerRole,
+        triggerReason: assessment.triggerReason ?? 'Proactive review',
+        hasConflict,
+        flaggedForReview: hasConflict,
       },
     });
   }
@@ -484,6 +507,13 @@ async function lookupMerchant(req: http.IncomingMessage, res: http.ServerRespons
     },
     publicSummary: merchant.publicSummary,
     topReasons: assessment ? (JSON.parse(assessment.publicReasons) as string[]) : [],
+    auditTrail: {
+      reviewedAt: assessment?.reviewedAt.toISOString() ?? null,
+      reviewerRole: assessment?.reviewerRole ?? null,
+      triggerReason: assessment?.triggerReason ?? null,
+    },
+    methodologyVersion: METHODOLOGY_VERSION,
+    flaggedForReview: assessment?.flaggedForReview ?? false,
   };
   json(res, 200, response);
 }
@@ -501,6 +531,8 @@ interface AssessmentInput {
   internalRationale: string;
   publicSummary: string;
   publicReasons: string[];
+  triggerReason?: string;
+  hasConflict?: boolean;
 }
 
 function serializeAssessment(a: {
@@ -514,6 +546,10 @@ function serializeAssessment(a: {
   publicSummary: string;
   publicReasons: string;
   reviewedAt: Date;
+  reviewerRole: string;
+  triggerReason: string;
+  hasConflict: boolean;
+  flaggedForReview: boolean;
 }) {
   return {
     id: a.id,
@@ -526,6 +562,11 @@ function serializeAssessment(a: {
     publicSummary: a.publicSummary,
     publicReasons: JSON.parse(a.publicReasons) as string[],
     reviewedAt: a.reviewedAt.toISOString(),
+    reviewerRole: a.reviewerRole,
+    triggerReason: a.triggerReason,
+    hasConflict: a.hasConflict,
+    flaggedForReview: a.flaggedForReview,
+    methodologyVersion: METHODOLOGY_VERSION,
   };
 }
 
@@ -577,13 +618,13 @@ const server = http.createServer(async (req, res) => {
 
     // POST /api/merchants
     if (method === 'POST' && url === '/api/merchants') {
-      await createMerchant(req, res); return;
+      await createMerchant(req, res, user.role); return;
     }
 
     // PUT /api/merchants/:id
     const putMatch = url.match(/^\/api\/merchants\/([^/?]+)$/);
     if (method === 'PUT' && putMatch) {
-      await updateMerchant(req, res, putMatch[1]); return;
+      await updateMerchant(req, res, putMatch[1], user.role); return;
     }
 
     // GET /api/reports

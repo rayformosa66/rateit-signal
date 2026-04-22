@@ -42,6 +42,10 @@ model Assessment {
   publicReasons        String   // JSON-encoded string[]
   reviewedBy           String
   reviewedAt           DateTime
+  reviewerRole         String   @default("reviewer")
+  triggerReason        String   @default("Proactive review")
+  hasConflict          Boolean  @default(false)
+  flaggedForReview     Boolean  @default(false)
 
   merchant             Merchant @relation(fields: [merchantId], references: [id])
 

@@ -131,8 +131,6 @@ describe('computeVerdict — Insufficient Data', () => {
 
 describe('computeVerdict — conflicting input', () => {
   it('returns High Risk (not Trusted) when 3 Strong pillars conflict with 2 red flags', () => {
-    // 3 Strong pillars would normally qualify for Trusted, but a severe
-    // red-flag cluster (2+) overrides to High Risk.
     expect(
       computeVerdict(input({
         transparencyRating:  'Strong',
@@ -142,5 +140,48 @@ describe('computeVerdict — conflicting input', () => {
         redFlags: ['counterfeit goods complaint', 'unresolved chargeback'],
       })),
     ).toBe('High Risk');
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Conflict of interest — Rule 0, highest priority
+// ---------------------------------------------------------------------------
+
+describe('computeVerdict — conflict of interest', () => {
+  it('returns Insufficient Data when hasConflict is true, even with 4 Strong pillars', () => {
+    expect(
+      computeVerdict(input({
+        transparencyRating:  'Strong',
+        reliabilityRating:   'Strong',
+        integrityRating:     'Strong',
+        communicationRating: 'Strong',
+        hasConflict: true,
+      })),
+    ).toBe('Insufficient Data');
+  });
+
+  it('returns Insufficient Data when hasConflict is true, even with High Risk indicators', () => {
+    expect(
+      computeVerdict(input({
+        transparencyRating:  'Weak',
+        reliabilityRating:   'Weak',
+        integrityRating:     'Weak',
+        communicationRating: 'Weak',
+        redFlags: ['fraud', 'non-delivery'],
+        hasConflict: true,
+      })),
+    ).toBe('Insufficient Data');
+  });
+
+  it('still returns Trusted when hasConflict is false', () => {
+    expect(
+      computeVerdict(input({
+        transparencyRating:  'Strong',
+        reliabilityRating:   'Strong',
+        integrityRating:     'Strong',
+        communicationRating: 'Strong',
+        hasConflict: false,
+      })),
+    ).toBe('Trusted');
   });
 });

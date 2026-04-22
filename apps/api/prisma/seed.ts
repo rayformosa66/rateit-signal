@@ -59,6 +59,10 @@ async function main(): Promise<void> {
       ]),
       reviewedBy: reviewer.id,
       reviewedAt: new Date('2025-11-01'),
+      reviewerRole: reviewer.role,
+      triggerReason: 'Proactive review',
+      hasConflict: false,
+      flaggedForReview: false,
     },
   });
 

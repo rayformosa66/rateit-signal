@@ -156,6 +156,147 @@ body {
   text-align: center;
 }
 
+/* ── Audit trail ─────────────────────────────────────────── */
+.audit-trail {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  padding: 8px 10px;
+  background: #f8f9fb;
+  border-radius: 6px;
+  border: 1px solid #e2e5ed;
+}
+
+.audit-conflict-badge {
+  font-size: 11px;
+  font-weight: 700;
+  color: #92400e;
+  background: #fef3c7;
+  border-radius: 4px;
+  padding: 3px 8px;
+  margin-bottom: 4px;
+  display: inline-block;
+}
+
+.audit-row {
+  font-size: 11px;
+  color: #666;
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.audit-row span + span::before {
+  content: '·';
+  margin-right: 6px;
+}
+
+.audit-trigger {
+  color: #888;
+  font-style: italic;
+}
+
+.audit-version {
+  color: #aaa;
+  font-size: 10px;
+  margin-top: 2px;
+}
+
+/* ── How We Rate ─────────────────────────────────────────── */
+.hwr-section {
+  border-top: 1px solid #e2e5ed;
+  padding-top: 10px;
+}
+
+.hwr-toggle {
+  background: none;
+  border: none;
+  color: #4a6fa5;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  padding: 0;
+  text-align: left;
+  width: 100%;
+}
+
+.hwr-toggle:hover {
+  text-decoration: underline;
+}
+
+.hwr-body {
+  margin-top: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.hwr-intro {
+  font-size: 11px;
+  color: #555;
+  line-height: 1.5;
+}
+
+.hwr-pillars {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.hwr-pillar {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.hwr-pillar-name {
+  font-size: 11px;
+  font-weight: 700;
+  color: #1a1a2e;
+}
+
+.hwr-pillar-desc {
+  font-size: 11px;
+  color: #666;
+  padding-left: 24px;
+}
+
+.hwr-rules {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  background: #f8f9fb;
+  border-radius: 6px;
+  padding: 8px 10px;
+}
+
+.hwr-rule {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 11px;
+  color: #333;
+  line-height: 1.4;
+}
+
+.badge-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.badge-dot.trusted     { background: #065f46; }
+.badge-dot.caution     { background: #92400e; }
+.badge-dot.high-risk   { background: #991b1b; }
+.badge-dot.insufficient{ background: #6b7280; }
+
+.hwr-version {
+  font-size: 10px;
+  color: #aaa;
+  text-align: right;
+}
+
 /* ── Report form ─────────────────────────────────────────── */
 .report-link {
   background: none;

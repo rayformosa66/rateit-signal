@@ -31,6 +31,14 @@ function AdminShell() {
               Reports
             </NavLink>
           </li>
+          <li>
+            <NavLink
+              to="/how-we-rate"
+              className={({ isActive }) => (isActive ? 'active' : undefined)}
+            >
+              How We Rate
+            </NavLink>
+          </li>
         </ul>
         <div style={{ padding: '16px 20px', borderTop: '1px solid #2d2d4e' }}>
           <button

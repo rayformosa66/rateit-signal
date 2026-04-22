@@ -10,7 +10,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { Link, useParams, useNavigate } from 'react-router-dom';
 import type { PillarRating, MerchantStatus, Verdict } from '@rateit/shared-types';
 import { computeVerdict } from '@rateit/verdict-engine';
-import { authHeaders } from '../lib/auth';
+import { authHeaders, getEmailFromToken } from '../lib/auth';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -33,6 +33,10 @@ interface FormState {
   internalRationale: string;
   publicSummary: string;
   publicReasons: string[]; // 3–4 items
+
+  // Transparency layer
+  triggerReason: string;
+  hasConflict: boolean;
 }
 
 type FormErrors = Partial<Record<keyof FormState | 'publicReasons_0' | 'publicReasons_1' | 'publicReasons_2', string>>;
@@ -40,6 +44,14 @@ type FormErrors = Partial<Record<keyof FormState | 'publicReasons_0' | 'publicRe
 // ---------------------------------------------------------------------------
 // Default state
 // ---------------------------------------------------------------------------
+
+const TRIGGER_REASON_OPTIONS = [
+  'Proactive review',
+  'Shopper reports received',
+  'Merchant escalation',
+  'Periodic re-review',
+  'Regulatory referral',
+];
 
 const DEFAULT_FORM: FormState = {
   name: '',
@@ -55,6 +67,8 @@ const DEFAULT_FORM: FormState = {
   internalRationale: '',
   publicSummary: '',
   publicReasons: ['', '', ''],
+  triggerReason: 'Proactive review',
+  hasConflict: false,
 };
 
 // ---------------------------------------------------------------------------
@@ -273,6 +287,8 @@ interface MerchantApiResponse {
     internalRationale: string;
     publicSummary: string;
     publicReasons: string[];
+    triggerReason?: string;
+    hasConflict?: boolean;
   } | null;
 }
 
@@ -327,6 +343,7 @@ function MerchantAssessmentPage() {
     integrityRating: form.integrityRating,
     communicationRating: form.communicationRating,
     redFlags: form.redFlags.filter((f) => f.trim() !== ''),
+    hasConflict: form.hasConflict,
   });
 
   // ── Load existing data in edit mode ───────────────────────────────────────
@@ -353,6 +370,8 @@ function MerchantAssessmentPage() {
         internalRationale: data.assessment?.internalRationale ?? '',
         publicSummary: data.assessment?.publicSummary ?? data.publicSummary,
         publicReasons: padToThree(data.assessment?.publicReasons ?? []),
+        triggerReason: data.assessment?.triggerReason ?? 'Proactive review',
+        hasConflict: data.assessment?.hasConflict ?? false,
       });
     }
     setLoading(false);
@@ -445,6 +464,8 @@ function MerchantAssessmentPage() {
         internalRationale: form.internalRationale.trim(),
         publicSummary: form.publicSummary.trim(),
         publicReasons: form.publicReasons.filter((r) => r.trim() !== ''),
+        triggerReason: form.triggerReason,
+        hasConflict: form.hasConflict,
       },
     };
 
@@ -720,6 +741,66 @@ function MerchantAssessmentPage() {
                   <button type="button" className="btn-add-item" onClick={addPublicReason}>
                     + Add reason (optional 4th)
                   </button>
+                )}
+              </div>
+            </section>
+
+            {/* ── Section: Transparency Layer ── */}
+            <section className="form-section">
+              <h3 className="section-heading">Transparency &amp; Integrity</h3>
+              <p className="section-hint">
+                Required for the public audit trail. Reviewer role is set from your login.
+              </p>
+
+              <div className="form-row form-row-half">
+                <div className="form-col">
+                  <FieldLabel label="What triggered this review?" htmlFor="triggerReason" />
+                  <div className="form-field">
+                    <select
+                      id="triggerReason"
+                      value={form.triggerReason}
+                      onChange={(e) => setField('triggerReason', e.target.value)}
+                      className="form-input"
+                    >
+                      {TRIGGER_REASON_OPTIONS.map((opt) => (
+                        <option key={opt} value={opt}>{opt}</option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+                <div className="form-col">
+                  <FieldLabel label="Reviewer role" htmlFor="reviewerRole" />
+                  <div className="form-field">
+                    <input
+                      id="reviewerRole"
+                      type="text"
+                      value={(() => { try { const t = getEmailFromToken(); return t ? 'reviewer' : 'reviewer'; } catch { return 'reviewer'; } })()}
+                      disabled
+                      className="form-input"
+                      style={{ background: '#f5f6fa', color: '#888' }}
+                    />
+                  </div>
+                </div>
+              </div>
+
+              <div className="conflict-flag-row">
+                <label className="conflict-flag-label">
+                  <input
+                    type="checkbox"
+                    checked={form.hasConflict}
+                    onChange={(e) => setField('hasConflict', e.target.checked)}
+                    className="conflict-flag-checkbox"
+                  />
+                  <span>
+                    <strong>Flag conflict of interest</strong> — I or my organisation have a
+                    relationship with this merchant. The verdict will be overridden to
+                    &ldquo;Insufficient Data&rdquo; and flagged for second review.
+                  </span>
+                </label>
+                {form.hasConflict && (
+                  <div className="conflict-flag-warning">
+                    Conflict flagged — verdict will be locked to Insufficient Data regardless of pillar ratings.
+                  </div>
                 )}
               </div>
             </section>

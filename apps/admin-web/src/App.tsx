@@ -3,6 +3,7 @@ import LoginPage from './pages/LoginPage';
 import MerchantListPage from './pages/MerchantListPage';
 import MerchantAssessmentPage from './pages/MerchantAssessmentPage';
 import ReportsPage from './pages/ReportsPage';
+import HowWeRatePage from './pages/HowWeRatePage';
 import AdminShell from './components/AdminShell';
 import ProtectedRoute from './components/ProtectedRoute';
 
@@ -11,6 +12,7 @@ function App() {
     <BrowserRouter>
       <Routes>
         <Route path="/login" element={<LoginPage />} />
+        <Route path="/how-we-rate" element={<HowWeRatePage />} />
         <Route element={<ProtectedRoute />}>
           <Route element={<AdminShell />}>
             <Route path="/merchants" element={<MerchantListPage />} />

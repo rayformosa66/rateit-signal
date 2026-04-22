@@ -3,6 +3,9 @@
  * Used across apps/extension, apps/admin-web, apps/api, and packages/verdict-engine.
  */
 
+/** Semantic version of the assessment methodology ruleset. */
+export const METHODOLOGY_VERSION = '1.0.0';
+
 /** Final trust verdict assigned to a merchant. */
 export type Verdict = 'Trusted' | 'Caution' | 'High Risk' | 'Insufficient Data';
 
@@ -41,6 +44,10 @@ export interface Assessment {
   publicReasons: string[];
   reviewedBy: string;
   reviewedAt: string;
+  reviewerRole: string;
+  triggerReason: string;
+  hasConflict: boolean;
+  flaggedForReview: boolean;
 }
 
 /** A trust report submitted by a shopper. */
@@ -63,6 +70,13 @@ export interface PillarSnapshot {
   communication: PillarRating;
 }
 
+/** Public audit trail attached to every verdict. */
+export interface AuditTrail {
+  reviewedAt: string | null;
+  reviewerRole: string | null;
+  triggerReason: string | null;
+}
+
 /** Response shape returned by the merchant-by-domain API endpoint. */
 export interface MerchantLookupResponse {
   domain: string;
@@ -72,4 +86,7 @@ export interface MerchantLookupResponse {
   pillarSnapshot: PillarSnapshot;
   publicSummary: string;
   topReasons: string[];
+  auditTrail: AuditTrail;
+  methodologyVersion: string;
+  flaggedForReview: boolean;
 }

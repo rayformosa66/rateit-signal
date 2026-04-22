@@ -1,7 +1,16 @@
 import jwt from 'jsonwebtoken';
 import http from 'http';
 
-const JWT_SECRET = process.env.JWT_SECRET ?? 'rateit-dev-secret-change-in-prod';
+const _rawSecret = process.env.JWT_SECRET;
+
+if (!_rawSecret && process.env.NODE_ENV === 'production') {
+  throw new Error(
+    'JWT_SECRET environment variable must be set in production. ' +
+    'Generate one with: node -e "console.log(require(\'crypto\').randomBytes(48).toString(\'hex\'))"',
+  );
+}
+
+const JWT_SECRET = _rawSecret ?? 'rateit-dev-secret-change-in-prod';
 const JWT_EXPIRES_IN = '8h';
 
 export interface TokenPayload {

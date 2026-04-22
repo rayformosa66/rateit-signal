@@ -8,8 +8,14 @@ const adapter = new PrismaLibSql({ url: `file:${dbPath}` });
 const prisma = new PrismaClient({ adapter });
 
 async function main(): Promise<void> {
-  // Seed an AdminUser who performs the assessments
-  const passwordHash = await bcrypt.hash('rateit-admin', 10);
+  // In production SEED_ADMIN_PASSWORD must be provided — no default is acceptable.
+  const rawPassword = process.env.SEED_ADMIN_PASSWORD;
+  if (!rawPassword && process.env.NODE_ENV === 'production') {
+    console.error('❌ SEED_ADMIN_PASSWORD must be set when seeding a production database.');
+    process.exit(1);
+  }
+  const adminPassword = rawPassword ?? 'rateit-admin';
+  const passwordHash = await bcrypt.hash(adminPassword, 10);
   const reviewer = await prisma.adminUser.upsert({
     where: { email: 'reviewer@rateit.internal' },
     update: { passwordHash },

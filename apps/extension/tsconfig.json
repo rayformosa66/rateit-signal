@@ -11,7 +11,7 @@
     "composite": false,
     "noEmit": true
   },
-  "include": ["src"],
+  "include": ["src", "node_modules/vite/client.d.ts"],
   "references": [
     { "path": "../../packages/shared-types" }
   ]

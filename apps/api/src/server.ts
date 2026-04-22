@@ -39,7 +39,37 @@ const prisma = new PrismaClient({ adapter });
 // ---------------------------------------------------------------------------
 
 const PORT = process.env.PORT ? Number(process.env.PORT) : 3001;
-const REVIEWER_PLACEHOLDER = 'reviewer@rateit.internal';
+
+// CORS — comma-separated list of allowed origins; defaults to * in development.
+const ALLOWED_ORIGINS: string[] = process.env.ALLOWED_ORIGINS
+  ? process.env.ALLOWED_ORIGINS.split(',').map((o) => o.trim()).filter(Boolean)
+  : ['*'];
+
+// ---------------------------------------------------------------------------
+// Login rate limiter — 10 attempts per IP per 15-minute window
+// ---------------------------------------------------------------------------
+const RATE_LIMIT_MAX = 10;
+const RATE_LIMIT_WINDOW_MS = 15 * 60 * 1000;
+
+interface RateEntry { count: number; resetAt: number }
+const loginAttempts = new Map<string, RateEntry>();
+
+function checkRateLimit(ip: string): { allowed: boolean; retryAfterSecs: number } {
+  const now = Date.now();
+  const entry = loginAttempts.get(ip);
+
+  if (!entry || now >= entry.resetAt) {
+    loginAttempts.set(ip, { count: 1, resetAt: now + RATE_LIMIT_WINDOW_MS });
+    return { allowed: true, retryAfterSecs: 0 };
+  }
+
+  if (entry.count >= RATE_LIMIT_MAX) {
+    return { allowed: false, retryAfterSecs: Math.ceil((entry.resetAt - now) / 1000) };
+  }
+
+  entry.count += 1;
+  return { allowed: true, retryAfterSecs: 0 };
+}
 
 function readBody(req: http.IncomingMessage): Promise<string> {
   return new Promise((resolve, reject) => {
@@ -50,24 +80,25 @@ function readBody(req: http.IncomingMessage): Promise<string> {
   });
 }
 
+/** Compute the CORS origin to reflect based on ALLOWED_ORIGINS config. */
+function getCorsOrigin(req: http.IncomingMessage): string {
+  if (ALLOWED_ORIGINS.includes('*')) return '*';
+  const requestOrigin = req.headers['origin'];
+  if (requestOrigin && ALLOWED_ORIGINS.includes(requestOrigin)) return requestOrigin;
+  return ALLOWED_ORIGINS[0] ?? '*';
+}
+
 function json(res: http.ServerResponse, statusCode: number, body: unknown): void {
   const payload = JSON.stringify(body);
   res.writeHead(statusCode, {
     'Content-Type': 'application/json',
     'Content-Length': Buffer.byteLength(payload),
-    'Access-Control-Allow-Origin': '*',
-    'Access-Control-Allow-Methods': 'GET, POST, PUT, OPTIONS',
-    'Access-Control-Allow-Headers': 'Content-Type, Authorization',
   });
   res.end(payload);
 }
 
 function preflight(res: http.ServerResponse): void {
-  res.writeHead(204, {
-    'Access-Control-Allow-Origin': '*',
-    'Access-Control-Allow-Methods': 'GET, POST, PUT, OPTIONS',
-    'Access-Control-Allow-Headers': 'Content-Type, Authorization',
-  });
+  res.writeHead(204);
   res.end();
 }
 
@@ -81,6 +112,14 @@ function unauthorized(res: http.ServerResponse): void {
 
 /** POST /api/auth/login */
 async function login(req: http.IncomingMessage, res: http.ServerResponse): Promise<void> {
+  const ip = req.socket.remoteAddress ?? 'unknown';
+  const rateCheck = checkRateLimit(ip);
+  if (!rateCheck.allowed) {
+    res.setHeader('Retry-After', String(rateCheck.retryAfterSecs));
+    json(res, 429, { error: 'Too many login attempts. Try again later.' });
+    return;
+  }
+
   const raw = await readBody(req);
   let body: { email?: string; password?: string };
   try {
@@ -207,7 +246,7 @@ async function getMerchant(res: http.ServerResponse, id: string): Promise<void> 
 }
 
 /** POST /api/merchants */
-async function createMerchant(req: http.IncomingMessage, res: http.ServerResponse, reviewerRole: string): Promise<void> {
+async function createMerchant(req: http.IncomingMessage, res: http.ServerResponse, reviewerId: string, reviewerRole: string): Promise<void> {
   const raw = await readBody(req);
   let body: Record<string, unknown>;
   try {
@@ -261,7 +300,7 @@ async function createMerchant(req: http.IncomingMessage, res: http.ServerRespons
         internalRationale: assessment.internalRationale,
         publicSummary: assessment.publicSummary,
         publicReasons: JSON.stringify(assessment.publicReasons),
-        reviewedBy: REVIEWER_PLACEHOLDER,
+        reviewedBy: reviewerId,
         reviewedAt: lastReviewedAt ? new Date(lastReviewedAt) : new Date(),
         reviewerRole,
         triggerReason: assessment.triggerReason ?? 'Proactive review',
@@ -289,6 +328,7 @@ async function updateMerchant(
   req: http.IncomingMessage,
   res: http.ServerResponse,
   id: string,
+  reviewerId: string,
   reviewerRole: string,
 ): Promise<void> {
   const existing = await prisma.merchant.findUnique({ where: { id } });
@@ -345,7 +385,7 @@ async function updateMerchant(
         internalRationale: assessment.internalRationale,
         publicSummary: assessment.publicSummary,
         publicReasons: JSON.stringify(assessment.publicReasons),
-        reviewedBy: REVIEWER_PLACEHOLDER,
+        reviewedBy: reviewerId,
         reviewedAt: lastReviewedAt ? new Date(lastReviewedAt) : new Date(),
         reviewerRole,
         triggerReason: assessment.triggerReason ?? 'Proactive review',
@@ -578,6 +618,12 @@ const server = http.createServer(async (req, res) => {
   const url = req.url ?? '/';
   const method = req.method?.toUpperCase() ?? 'GET';
 
+  // Set CORS headers on every response — computed once per request.
+  const corsOrigin = getCorsOrigin(req);
+  res.setHeader('Access-Control-Allow-Origin', corsOrigin);
+  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+
   if (method === 'OPTIONS') { preflight(res); return; }
 
   try {
@@ -618,13 +664,13 @@ const server = http.createServer(async (req, res) => {
 
     // POST /api/merchants
     if (method === 'POST' && url === '/api/merchants') {
-      await createMerchant(req, res, user.role); return;
+      await createMerchant(req, res, user.userId, user.role); return;
     }
 
     // PUT /api/merchants/:id
     const putMatch = url.match(/^\/api\/merchants\/([^/?]+)$/);
     if (method === 'PUT' && putMatch) {
-      await updateMerchant(req, res, putMatch[1], user.role); return;
+      await updateMerchant(req, res, putMatch[1], user.userId, user.role); return;
     }
 
     // GET /api/reports

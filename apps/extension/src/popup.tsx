@@ -4,7 +4,7 @@ import type { Verdict, MerchantLookupResponse } from '@rateit/shared-types';
 import { METHODOLOGY_VERSION } from '@rateit/shared-types';
 import './popup.css';
 
-const API_BASE = 'http://localhost:3001';
+const API_BASE: string = import.meta.env.VITE_API_BASE ?? 'http://localhost:3001';
 
 const REPORT_TYPES = [
   { value: 'non_delivery',       label: 'Item not delivered' },
